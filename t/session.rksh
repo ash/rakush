@@ -10,9 +10,11 @@ printf 'one\ntwo\n' | { .uc }
 # streaming: the pipeline stops when head exits
 yes | { $_ ~ '!' } | head -2
 
-# a Raku list becomes separate arguments, spaces and all
+# a lone { } argument is Raku, run once: each element is one argument
 my @w = 'a b', 'c'
-printf '[%s]\n' $(@w)
+printf '[%s]\n' { @w }
+echo { (1..3).map(* * 2) }
+echo { 1..3 }
 
 # the session keeps its variables between lines
 my $n = 6
@@ -39,3 +41,38 @@ pwd
 cd $RAKUSH_TEST_DIR
 echo t/*.out
 echo 't/*.out'
+
+# brace expansion; braces with no comma or sequence stay literal
+echo {1..3} x{,.bak} {a,b}/c HEAD@{1} {}
+echo {01..03} {c..a} {1..9..4}
+echo '{a,b}' "{a,b}"
+
+# POSIX $( ) and backticks: one argument per output line, never split on blanks
+printf '[%s]\n' $(printf 'one two\nthree\n')
+printf '[%s]\n' "$(printf 'a\nb\n')"
+echo `echo tick` $(echo $(echo deep))
+echo $( say 6 * 7 )
+
+# backslashes
+printf '[%s]\n' a\ b
+echo \$HOME "\$HOME and \"quotes\""
+find t -name session.out -exec echo found {} \;
+
+# a value is never re-read: a glob in a variable stays a glob
+echo $RAKUSH_TEST_GLOB
+echo "t/"*.out
+
+# ~ expands only unquoted and at the start
+echo ~ | { $_ eq %*ENV<HOME> ?? 'tilde ok' !! "tilde wrong: $_" }
+echo '~' x~
+
+# rak's return rules: exactly True keeps, False/Nil/Empty drop, a Slip gives
+# one line per element, a returned Regex matches $_, 0 and "" are printed
+printf 'a b\nc\n' | { .words.Slip }
+printf 'foo\nbar\nfood\n' | { /foo/ }
+printf '#c\nkeep\n' | { .uc unless .starts-with('#') }
+printf '0\n' | { $_ }
+
+# a line that throws is dropped and reported once; the stage exits 1
+printf '1\nx\n3\ny\n' | { /\d/ ?? $_ + 1 !! die "not a number: $_" }
+echo $?

@@ -6,6 +6,8 @@ y!
 y!
 [a b]
 [c]
+2 4 6
+1 2 3
 42
 [] end
 [x  y]
@@ -17,3 +19,31 @@ y!
 "/".IO
 t/session.out
 t/*.out
+1 2 3 x x.bak a/c b/c HEAD@{1} {}
+01 02 03 c b a 1 5 9
+{a,b} {a,b}
+[one two]
+[three]
+[a
+b]
+tick deep
+42
+[a b]
+$HOME $HOME and "quotes"
+found t/session.out
+t/*.out
+t/session.out
+tilde ok
+~ x~
+a
+b
+c
+foo
+food
+KEEP
+0
+2
+rakush: { } failed on input line 2: not a number: x
+4
+rakush: { } failed on 1 more input lines
+1

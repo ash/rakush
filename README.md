@@ -19,7 +19,7 @@ banana
 y!
 y!
 ~ rakush$ my @w = 'a b', 'c'
-~ rakush$ printf '[%s]\n' $(@w)
+~ rakush$ printf '[%s]\n' { @w }
 [a b]
 [c]
 ```
@@ -32,15 +32,35 @@ y!
 - `=expr` is Raku too, and prints the value.
 - Anything else is a command line:
   - `a | b | c` is a pipeline.
-  - `{ … }` as a pipeline stage is a Raku block called once per input line,
-    with the line in `$_`. If it returns a Bool, the line is kept or dropped;
-    `Nil` drops the line; any other value replaces it.
-  - `$( … )` in an argument is a Raku expression. Each element of its list
-    becomes one argument.
-  - `$NAME`, `$0`, `$$` and `$?` expand. Unquoted `*`, `?`, `[…]` and a
-    leading `~` glob.
+  - `{ … }` is a Raku block, and where it stands decides how often it runs,
+    as in Raku itself (`.map` calls a block per element; a string calls it
+    once):
+    - as a pipeline stage, once per input line, with the line in `$_`. What
+      it returns follows the rules of lizmat's
+      [rak](https://github.com/lizmat/App-Rak): exactly `True` keeps the
+      line; `False`, `Nil` and `Empty` drop it (so `{ .uc unless .starts-with('#') }`
+      skips comments); a Slip gives one line per element
+      (`{ .words.Slip }`); any other value replaces the line, so `0` and `""`
+      are printed, not taken as false. A returned regex is matched against
+      `$_`, so `{ /foo/ }` is a grep. A line whose block throws is dropped;
+      the first error is reported, and the stage exits with 1.
+    - as a word of its own, once. Each element of what it returns becomes one
+      argument.
+  - `$( cmd )` and `` `cmd` `` are POSIX command substitution. Each output
+    line becomes one argument; inside double quotes, the whole output is one.
+  - Brace expansion works as in bash and zsh: `x{,.bak}`, `{a,b}/c`,
+    `{1..5}`, `{01..10}`, `{a..e}`. Braces with no comma or sequence inside
+    stay literal, so `find … -exec cmd {} \;` and `HEAD@{1}` work. A lone
+    `{ … }` is Raku unless it looks like brace expansion (no blank inside,
+    and a top-level comma or a sequence).
+  - `$NAME`, `${NAME}`, `$0`, `$$` and `$?` expand. Unquoted `*`, `?`, `[…]`
+    glob, and a leading `~` is your home directory.
+  - `'…'` is literal; `"…"` expands variables and `$( … )`, and `\` escapes
+    `$`, `` ` ``, `"` and `\` inside it; outside quotes `\` escapes any
+    character.
   - Nothing is ever split on whitespace: `$VAR` holding `x  y` is one argument
-    whether it is quoted or not.
+    whether it is quoted or not. A value is never re-read either: a `*` that
+    came from a variable, a command or a block stays a `*`.
 - `cd` and `exit` are built in.
 
 Arrow keys and history work; history is kept in `~/.rakush_history`. Ctrl-C
@@ -67,24 +87,26 @@ The `rakupp` command is one program built on them; rakush is another.
 | rakush feature | rakupp API |
 |---|---|
 | Raku lines, kept in one session | `rk_eval` in the mainline scope |
-| `$( … )` arguments | `rk_eval`, then `rk_elems`/`rk_at_pos`/`rk_str_get` |
+| `{ … }` arguments | `rk_eval`, then `rk_elems`/`rk_at_pos`/`rk_str_get` |
 | `{ … }` stages | `rk_eval` compiles a closure once; `rk_call_value` per line |
 | `cd`, callable from Raku as `cd(...)` | `rk_register` |
 
 A `{ … }` stage runs in a forked copy of the shell, as bash runs a function
 in a pipeline in a subshell: it sees the session's variables but cannot
-change them.
+change them. `$( … )` runs its line in a forked copy too, so it can hold
+anything a prompt line can, Raku lines included: `echo $( say 6 * 7 )`.
 
 ## What is missing
 
 - Redirections (`>`, `>>`, `<`, `2>&1`), `&&`, `||`, `;` and `&`.
-- POSIX command substitution: `$( … )` holds Raku at the moment.
+- Subshells `( … )` and group commands `{ a; b; }`; in rakush a `{ … }`
+  stage is always Raku.
 - Job control: Ctrl-Z, `fg`, `bg`.
-- `rakush -c '…'` and running script files.
+- Running script files (`rakush -c 'line'` works).
 - Interrupting a Raku line: it runs inside the shell, so Ctrl-C cannot stop
   a runaway `loop {}`.
 - Fork safety: once Raku code has started threads (`start { }`), forking a
-  `{ … }` stage can deadlock. The fix is either a helper process forked
+  `{ … }` stage or a `$( … )` can deadlock. The fix is either a helper process forked
   before any thread exists, or running stages in-process.
 
 ## Related work
