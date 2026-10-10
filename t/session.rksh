@@ -1,0 +1,41 @@
+# Fed to rakush on stdin by t/run.sh; the output must match t/session.out.
+
+# arithmetic is exact
+=1/3 + 1/6
+
+# a { } stage sees each line as $_: a Bool filters, a string replaces
+printf 'apple\nbanana\ncherry\n' | { .contains('an') }
+printf 'one\ntwo\n' | { .uc }
+
+# streaming: the pipeline stops when head exits
+yes | { $_ ~ '!' } | head -2
+
+# a Raku list becomes separate arguments, spaces and all
+my @w = 'a b', 'c'
+printf '[%s]\n' $(@w)
+
+# the session keeps its variables between lines
+my $n = 6
+=$n * 7
+
+# environment variables: an unset one leaves no word, a set one is never split
+echo [$RAKUSH_TEST_UNSET] end
+echo [$RAKUSH_TEST_VAR]
+echo "[$RAKUSH_TEST_VAR]"
+echo '[$RAKUSH_TEST_VAR]'
+
+# exit status
+false
+echo $?
+true
+echo $?
+
+# cd is a builtin, and Raku's $*CWD follows it
+cd /
+pwd
+=$*CWD
+
+# unquoted globs expand, quoted ones do not
+cd $RAKUSH_TEST_DIR
+echo t/*.out
+echo 't/*.out'

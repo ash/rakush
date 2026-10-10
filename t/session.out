@@ -1,0 +1,19 @@
+0.5
+banana
+ONE
+TWO
+y!
+y!
+[a b]
+[c]
+42
+[] end
+[x  y]
+[x  y]
+[$RAKUSH_TEST_VAR]
+1
+0
+/
+"/".IO
+t/session.out
+t/*.out
